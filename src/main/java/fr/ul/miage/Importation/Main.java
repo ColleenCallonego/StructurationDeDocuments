@@ -5,10 +5,16 @@ import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.UpdateOptions;
 import org.bson.Document;
 
+import javax.print.Doc;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.lang.reflect.Array;
+import java.text.Normalizer;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Scanner;
 import java.util.TreeSet;
 
@@ -112,12 +118,13 @@ public class Main {
             d.put("contenu", contenu);
             createFormation(collectionFormation, collectionPlace, transformString(universites), transformString(formations));
             for (Auteur auteur : transformStringAuteurs(auteurs)){
-                createAuteur(collectionUtilisateur, auteur.nom, auteur.prenom, transformString(roles), transformString(universites), transformString(formations));
+                createAuteur(collectionUtilisateur, auteur.nom, auteur.prenom, transformString(roles), transformString(universites), transformString(formations), date);
                 listAuteurs.add(getLoginAuteur(collectionUtilisateur, auteur.nom, auteur.prenom));
             }
             d.put("auteurs", listAuteurs);
             d.put("universites", listUniversites);
             d.put("formations", listFormations);
+            d.put("roles", transformString(roles));
             d.put("noteMoyenne", 0);
             collectionOeuvre.insertOne(d);
         }
@@ -202,8 +209,7 @@ public class Main {
         return (String)d.get("login");
     }
 
-    //AJOUTER BON TRAITEMENT POUR UNIVERISTE, FORMATIONS & ROLE
-    public static void createAuteur (MongoCollection<Document> collection, String nom, String prenom, TreeSet<String> roles, TreeSet<String> universite, TreeSet<String> formations){
+    public static void createAuteur (MongoCollection<Document> collection, String nom, String prenom, TreeSet<String> roles, TreeSet<String> universites, TreeSet<String> formations, String datePubli){
         Document d = new Document();
         if (notExistAuteur(collection, nom, prenom)){
             Long nb = sameLogin(collection, nom, prenom);
@@ -215,39 +221,105 @@ public class Main {
             }
             d.put("nom", nom);
             d.put("prenom", prenom);
-            d.put("universite", universite.first());
+            d.put("universite", universites.first());
+            d.put("formation", formations.first());
             Document doc;
             ArrayList<Document> list = new ArrayList<Document>();
             for(String formation : formations){
                 doc = new Document();
                 doc.put("formation", formation);
-                doc.put("debut", " ");
-                doc.put("fin", " ");
+                doc.put("debut", datePubli);
+                doc.put("fin", datePubli);
                 list.add(doc);
             }
-            d.put("formations", list);
+            d.put("histoFormations", list);
             d.put("role", roles.first());
             collection.insertOne(d);
         }
         else{
+            Auteur a = getInfoAuteur(collection, nom, prenom);
             Document doc;
-            ArrayList<Document> list = new ArrayList<Document>();
+            ArrayList<Document> histoFormations = new ArrayList<Document>();
             for(String formation : formations){
-                doc = new Document();
-                doc.put("formation", formation);
-                doc.put("debut", " ");
-                doc.put("fin", " ");
-                list.add(doc);
+                Boolean trouve = false;
+                for(Formation f : a.formations){
+                    if(formation.equals(f.formation)){
+                        trouve = true;
+                        Date date = new Date();
+                        try {
+                            date = new SimpleDateFormat("yyyy-MM-dd").parse(datePubli);
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                        }
+                        f.setFormation(date);
+                    }
+                }
+                if(!trouve){
+                    Date date = new Date();
+                    try {
+                        date = new SimpleDateFormat("yyyy-MM-dd").parse(datePubli);
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                    a.formations.add(new Formation(formation, date, date));
+                }
             }
-            d.put("formations", list);
+            Date date = new Date();
+            try {
+                date = new SimpleDateFormat("yyyy-MM-dd").parse(datePubli);
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            Date date2 = date;
+            Boolean changeUniversite = false;
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+            for(Formation form : a.formations){
+                if (date.before(date2)){
+                    changeUniversite = false;
+                }
+                else if(form.fin.before(date)){
+                    changeUniversite = true;
+                    date2 = form.fin;
+                }
+                doc = new Document();
+                doc.put("formation", form.formation);
+                doc.put("debut", formatter.format(form.debut));
+                doc.put("fin", formatter.format(form.fin));
+                histoFormations.add(doc);
+            }
+            if(changeUniversite){
+                d.put("universite", universites.first());
+                d.put("formation", formations.first());
+            }
+            d.put("histoFormations", histoFormations);
             d.put("role", roles.first());
-            collection.updateOne(and(eq("nom", nom), eq("prenom", prenom)), new Document("$set", d), new UpdateOptions().upsert(true));
+            collection.updateOne(and(eq("nom", nom), eq("prenom", prenom)), new Document("$set", d));
         }
     }
 
     public static Boolean notExistAuteur (MongoCollection<Document> collection, String nom, String prenom){
         Long present = collection.countDocuments(and(eq("nom", nom), eq("prenom", prenom)));
         return (present == 0);
+    }
+
+    public static Auteur getInfoAuteur (MongoCollection<Document> collection, String nom, String prenom){
+        Auteur a;
+        ArrayList<Formation> listFormations = new ArrayList<Formation>();
+        Document d = collection.find(and(eq("nom", nom), eq("prenom", prenom))).first();
+        ArrayList<Document> documents = (ArrayList<Document>) d.get("histoFormations");
+        for(Document doc : documents){
+            Date debut = new Date();
+            Date fin = new Date();
+            try {
+                debut = new SimpleDateFormat("yyyy-MM-dd").parse((String)doc.get("debut"));
+                fin = new SimpleDateFormat("yyyy-MM-dd").parse((String)doc.get("fin"));
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            listFormations.add(new Formation((String)doc.get("formation"), debut, fin));
+        }
+        a = new Auteur(nom, prenom, (String)d.get("universite"), (String)d.get("formation"), listFormations);
+        return a;
     }
 
     public static Long sameLogin (MongoCollection<Document> collection, String nom, String prenom){
