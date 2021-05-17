@@ -19,7 +19,7 @@ import static com.mongodb.client.model.Filters.eq;
 public class Main {
     public static String log;
     public static void main (String[] args){
-        /*String n = System.getProperty("line.separator");
+        String n = System.getProperty("line.separator");
         System.out.println("Bienvenue dans le logiciel de consultation de document" + n
                             + "Entrez votre login pour vous connectez :");
         Scanner scanner = new Scanner(System.in);
@@ -32,14 +32,7 @@ public class Main {
         }
         System.out.println("Connection réussie !");
         log = login;
-        ecranPrincipal();*/
-        log = "McdonnellC";
-        MongoClient mongoClient = MongoClients.create();
-        MongoDatabase database = mongoClient.getDatabase("projet");
-        MongoCollection<Document> collectionUtilisateur = database.getCollection("commentaire");
-        String s = "60a26f49f0808914f9244524";
-        ObjectId o = new ObjectId(s);
-        addCommentaire(collectionUtilisateur, "C'est très bien", "Les oubliés d'encre", "2011-03-15" , 8);
+        ecranPrincipal();
     }
 
     public static Boolean connect(String login){
@@ -142,5 +135,9 @@ public class Main {
         Document d = new Document();
         d.put("NoteMoyenne", moyenne.get("noteMoyenne"));
         collectionOeuvre.updateOne(and(eq("titre", titre), eq("datePublication", datePublicationOeuvre)), new Document("$set", d));
+    }
+
+    public static void essai (){
+
     }
 }
