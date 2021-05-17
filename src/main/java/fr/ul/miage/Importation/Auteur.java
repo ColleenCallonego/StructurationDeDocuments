@@ -21,4 +21,9 @@ public class Auteur {
         this.universite = universite;
         this.formations = formations;
     }
+
+    @Override
+    public String toString() {
+        return nom + " " + prenom;
+    }
 }

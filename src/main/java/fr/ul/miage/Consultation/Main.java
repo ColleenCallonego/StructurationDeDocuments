@@ -1,9 +1,6 @@
 package fr.ul.miage.Consultation;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.*;
 import com.mongodb.client.model.Accumulators;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
@@ -11,6 +8,7 @@ import com.mongodb.client.model.Projections;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
+import javax.print.Doc;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.text.ParseException;
@@ -179,7 +177,36 @@ public class Main {
 
     }
 
-    public static void addCommentaire (MongoCollection<Document> collection, String commentaire, String titre, String datePublicationOeuvre, Integer note){
+    public static void afficherOeuvre(MongoCollection<Document>collectionOeuvre, Oeuvre oeuvre, String titre, String datePublication){
+        MongoClient mongoClient = MongoClients.create();
+        MongoDatabase database = mongoClient.getDatabase("projet");
+        MongoCollection<Document> collectionCommentaire = database.getCollection("commentaire");
+        //récupération des commentaires liés à l'oeuvre
+        ArrayList<Commentaire> commentaires = new ArrayList<Commentaire>();
+        FindIterable<Document> docs = collectionCommentaire.find(and(eq("oeuvre.titre", titre), eq("oeuvre.datePublicationOeuvre", datePublication)));
+        docs.forEach(doc -> commentaires.add(new Commentaire(doc.get("auteur").toString(), doc.get("contenu").toString(), doc.get("note").toString())));
+        //affichage données de l'oeuvre
+
+        //affichage commentaires liés à l'oeuvre
+
+        System.out.println("Souhaitez vous déponsez un commentaire et une note ? (Oui ou Non)");
+        Scanner scan = new Scanner(System.in);
+        String rep = scan.nextLine();
+        if (rep.equals("Oui")){
+            ecrireCommentaire(collectionOeuvre, collectionCommentaire, titre, datePublication);
+        }
+    }
+
+    public static void ecrireCommentaire (MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionCommentaire, String titre, String datePublicationOeuvre){
+        System.out.println("Ecrivez votre commentaire : (sur une seule ligne");
+        Scanner scan = new Scanner(System.in);
+        String commentaire = scan.nextLine();
+        System.out.println("Ecrivez votre note : (un nombre entier)");
+        Integer note = scan.nextInt();
+        addCommentaire(collectionOeuvre, collectionCommentaire, commentaire, titre, datePublicationOeuvre, note);
+    }
+
+    public static void addCommentaire (MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionCommentaire, String commentaire, String titre, String datePublicationOeuvre, Integer note){
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         Date datePublicationO = new Date();
         try {
@@ -195,14 +222,11 @@ public class Main {
         d.put("oeuvre", doc);
         d.put("contenu", commentaire);
         d.put("note", note);
-        collection.insertOne(d);
-        updateNoteMoyenneOeuvre(collection, titre, datePublicationOeuvre);
+        collectionCommentaire.insertOne(d);
+        updateNoteMoyenneOeuvre(collectionOeuvre,collectionCommentaire, titre, datePublicationOeuvre);
     }
 
-    public static void updateNoteMoyenneOeuvre(MongoCollection<Document> collectionCommentaire, String titre, String datePublicationOeuvre){
-        MongoClient mongoClient = MongoClients.create();
-        MongoDatabase database = mongoClient.getDatabase("projet");
-        MongoCollection<Document> collectionOeuvre = database.getCollection("oeuvre");
+    public static void updateNoteMoyenneOeuvre(MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionCommentaire, String titre, String datePublicationOeuvre){
         Document moyenne = collectionCommentaire.aggregate(
                 Arrays.asList(
                         Aggregates.match(Filters.eq("oeuvre.titre", titre)),
@@ -213,9 +237,5 @@ public class Main {
         Document d = new Document();
         d.put("NoteMoyenne", moyenne.get("noteMoyenne"));
         collectionOeuvre.updateOne(and(eq("titre", titre), eq("datePublication", datePublicationOeuvre)), new Document("$set", d));
-    }
-
-    public static void essai (){
-
     }
 }
