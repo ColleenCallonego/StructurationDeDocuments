@@ -4,8 +4,15 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Accumulators;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Projections;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Scanner;
 
 import static com.mongodb.client.model.Filters.and;
@@ -38,26 +45,38 @@ public class Main {
         return (present != 0);
     }
 
+    public static MongoCollection<Document> getCollectionOeuvre(){
+        // Creation de la connexion au serveur MongoDB
+        MongoClient mongoClient = MongoClients.create();
+        // Sélection de la base de données
+        MongoDatabase database = mongoClient.getDatabase("projet");
+        // Selection de la collection
+        MongoCollection<Document> collection = database.getCollection("oeuvre");
+        return collection;
+    }
+
     public static void ecranPrincipal(){
+        MongoCollection<Document> collectionOeuvre = getCollectionOeuvre();
         Integer rep = menu();
         while (rep != 0){
             switch (rep){
                 case 1:
-                    rechercheTitre();
+                    rechercheTitre(collectionOeuvre);
                     break;
                 case 2:
-                    rechercheMotsCles();
+                    rechercheMotsCles(collectionOeuvre);
                     break;
                 case 3:
-                    rechercheThematique();
+                    rechercheThematique(collectionOeuvre);
                     break;
                 case 4:
-                    listeMieuxNotees();
+                    listeMieuxNotees(collectionOeuvre);
                     break;
                 case 5:
-                    listeCommenteeRecemment();
+                    listeCommenteeRecemment(collectionOeuvre);
                     break;
             }
+            rep = menu();
         }
     }
 
@@ -76,23 +95,84 @@ public class Main {
         return choix;
     }
 
-    public static void rechercheTitre() {
+    public static void rechercheTitre(MongoCollection<Document> collection) {
+
+        System.out.println("\n  Recherche par titre");
+        collection.aggregate(Arrays.asList(
+                Aggregates.lookup("utilisateur", "universites", "universite", "Utilisateur"),
+                Aggregates.unwind("$Utilisateur"),
+                Aggregates.match(eq("Utilisateur.login", log)),
+                Aggregates.match(Filters.expr(" { $eq: [ \"$formations\" , \"$Utilisateur.formations.formation\"] } ")),
+                Aggregates.match(Filters.expr("[\"$roles\", \"$Utilisateur.role\"]")),
+                Aggregates.project(Projections.exclude("Utilisateur", "_id"))
+        )).forEach(doc -> System.out.println(doc.toJson()));
+
+
+
+        /*ArrayList<Bson> requestTitre = new ArrayList<>();
+        requestTitre.add(Aggregates.lookup("utilisateur", "universites", "universite", "Utilisateur"));
+        requestTitre.add(Aggregates.unwind("$Utilisateur"));
+        requestTitre.add(Aggregates.match(Filters.eq("Utilisateur.login", log)));
+        requestTitre.add(Aggregates.match(Filters.expr(" { $eq: [ \"$formations\" , \"$Utilisateur.formations.formation\"] } ")));
+        requestTitre.add(Aggregates.match(Filters.expr(" [ \"$roles\" , \"$Utilisateur.role\"] ")));
+        requestTitre.add(Aggregates.project(Projections.exclude("Utilisateur", "_id")));*/
+
+        /*requestTitre.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
+        requestTitre.add(Aggregates.limit(5));*/
+
+
+
+        /*collection.aggregate(requestTitre)
+                .forEach(doc ->  System.out.println(doc.toJson()));*/
+
 
     }
 
-    public static void rechercheMotsCles() {
+    public static void rechercheMotsCles(MongoCollection<Document> collection) {
+        //PAS ENCORE FAIT !!!!!
+        System.out.println("\n  Recherche par mots clès");
+        ArrayList<Bson> request1 = new ArrayList<>();
+        request1.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
+        request1.add(Aggregates.limit(5));
+        collection.aggregate(request1)
+                .forEach(doc ->  System.out.println(doc.toJson()));
+
 
     }
 
-    public static void rechercheThematique() {
+    public static void rechercheThematique(MongoCollection<Document> collection) {
+        //PAS ENCORE FAIT !!!!!
+        System.out.println("\n  Recherche par thématique");
+        ArrayList<Bson> request1 = new ArrayList<>();
+        request1.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
+        request1.add(Aggregates.limit(5));
+        collection.aggregate(request1)
+                .forEach(doc ->  System.out.println(doc.toJson()));
+
 
     }
 
-    public static void listeMieuxNotees() {
+    public static void listeMieuxNotees(MongoCollection<Document> collection) {
+        //PAS ENCORE FAIT !!!!!
+        System.out.println("\n  Liste des 10 meilleurs notes");
+        ArrayList<Bson> request1 = new ArrayList<>();
+        request1.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
+        request1.add(Aggregates.limit(5));
+        collection.aggregate(request1)
+                .forEach(doc ->  System.out.println(doc.toJson()));
+
 
     }
 
-    public static void listeCommenteeRecemment() {
+    public static void listeCommenteeRecemment(MongoCollection<Document> collection) {
+        //PAS ENCORE FAIT !!!!!
+        System.out.println("\n  Liste des 10 les plus récemment commentés");
+        ArrayList<Bson> request1 = new ArrayList<>();
+        request1.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
+        request1.add(Aggregates.limit(5));
+        collection.aggregate(request1)
+                .forEach(doc ->  System.out.println(doc.toJson()));
+
 
     }
 }

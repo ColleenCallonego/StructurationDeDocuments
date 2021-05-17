@@ -118,6 +118,7 @@ public class Main {
             d.put("auteurs", listAuteurs);
             d.put("universites", listUniversites);
             d.put("formations", listFormations);
+            d.put("roles", transformString(roles));
             d.put("noteMoyenne", 0);
             collectionOeuvre.insertOne(d);
         }
