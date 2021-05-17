@@ -1,6 +1,7 @@
 package fr.ul.miage.Importation;
 
 import com.mongodb.client.*;
+import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.UpdateOptions;
 import org.bson.Document;
 
@@ -26,6 +27,7 @@ public class Main {
         MongoCollection<Document> collectionUtilisateur = database.getCollection("utilisateur");
         MongoCollection<Document> collectionPlace = database.getCollection("place");
         getDocumentsToUpsert(collectionOeuvre, collectionFormation, collectionPlace, collectionUtilisateur);
+        collectionOeuvre.createIndex(Indexes.text("contenu"));
     }
 
     public static ArrayList<Document> getDocumentsToUpsert (MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionFormation, MongoCollection<Document> collectionPlace, MongoCollection<Document> collectionUtilisateur){
@@ -116,6 +118,7 @@ public class Main {
             d.put("auteurs", listAuteurs);
             d.put("universites", listUniversites);
             d.put("formations", listFormations);
+            d.put("noteMoyenne", 0);
             collectionOeuvre.insertOne(d);
         }
     }
