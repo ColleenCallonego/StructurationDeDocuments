@@ -13,6 +13,9 @@ import org.bson.conversions.Bson;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Scanner;
 
 import static com.mongodb.client.model.Filters.and;
@@ -173,6 +176,46 @@ public class Main {
         collection.aggregate(request1)
                 .forEach(doc ->  System.out.println(doc.toJson()));
 
+
+    }
+
+    public static void addCommentaire (MongoCollection<Document> collection, String commentaire, String titre, String datePublicationOeuvre, Integer note){
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        Date datePublicationO = new Date();
+        try {
+            datePublicationO = new SimpleDateFormat("yyyy-MM-dd").parse(datePublicationOeuvre);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        Document doc = new Document();
+        doc.put("titre", titre);
+        doc.put("datePublicationOeuvre", formatter.format(datePublicationO));
+        Document d = new Document();
+        d.put("auteur", log);
+        d.put("oeuvre", doc);
+        d.put("contenu", commentaire);
+        d.put("note", note);
+        collection.insertOne(d);
+        updateNoteMoyenneOeuvre(collection, titre, datePublicationOeuvre);
+    }
+
+    public static void updateNoteMoyenneOeuvre(MongoCollection<Document> collectionCommentaire, String titre, String datePublicationOeuvre){
+        MongoClient mongoClient = MongoClients.create();
+        MongoDatabase database = mongoClient.getDatabase("projet");
+        MongoCollection<Document> collectionOeuvre = database.getCollection("oeuvre");
+        Document moyenne = collectionCommentaire.aggregate(
+                Arrays.asList(
+                        Aggregates.match(Filters.eq("oeuvre.titre", titre)),
+                        Aggregates.match(Filters.eq("oeuvre.datePublicationOeuvre", datePublicationOeuvre)),
+                        Aggregates.group("$oeuvre.titre", Accumulators.avg("noteMoyenne", "$note"))
+                )
+        ).first();
+        Document d = new Document();
+        d.put("NoteMoyenne", moyenne.get("noteMoyenne"));
+        collectionOeuvre.updateOne(and(eq("titre", titre), eq("datePublication", datePublicationOeuvre)), new Document("$set", d));
+    }
+
+    public static void essai (){
 
     }
 }
