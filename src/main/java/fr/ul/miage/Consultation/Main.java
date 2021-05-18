@@ -90,7 +90,7 @@ public class Main {
                 + "1. Une recherche par titre" + n
                 + "2. Une recherche par mots-clés" + n
                 + "3. Une recherche par thématique" + n
-                + "4. Afficher une liste des publications les mieux 10 (10 oeuvres)" + n
+                + "4. Afficher une liste des publications les mieux notées (10 oeuvres)" + n
                 + "5. Afficher une liste des publications commentées récemment (10 oeuvres)" + n
                 + "0. Se déconnecter");
         Integer choix = scan.nextInt();
@@ -134,25 +134,27 @@ public class Main {
     }
 
     public static void listeMieuxNotees(MongoCollection<Document> collection) {
+        ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Liste des 10 meilleurs notes");
         ArrayList<Bson> requestTitre = new ArrayList<>();
         requestTitre = restrictionAcces(requestTitre);
-        requestTitre.add(Sorts.orderBy(Sorts.descending("noteMoyenne"), Sorts.ascending("titre")));
+        requestTitre.add(sort(Sorts.orderBy(Sorts.descending("noteMoyenne"), Sorts.ascending("titre"))));
         requestTitre.add(limit(10));
-        collection.aggregate(requestTitre)
-                .forEach(doc ->  System.out.println(doc.toJson()));
+        collection.aggregate(requestTitre).forEach(doc ->  oeuvres.add(new Oeuvre(doc.get("titre").toString(), (ArrayList<String>) doc.get("auteurs"), doc.get("nbPages").toString(), doc.get("datePublication").toString(), doc.get("thematique").toString(), doc.get("universites").toString(), doc.get("formations").toString(), doc.get("contenu").toString(), doc.get("noteMoyenne"))));
+        afficherOeuvres(collection, oeuvres);
     }
 
     public static void listeCommenteeRecemment(MongoCollection<Document> collection) {
+        ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Liste des 10 les plus récemment commentés");
         ArrayList<Bson> requestTitre = new ArrayList<>();
         requestTitre = restrictionAcces(requestTitre);
         requestTitre.add(lookup("commentaire", "titre", "oeuvre.titre", "Commentaire"));
         requestTitre.add(match(eq("$expr", Arrays.asList("$Commentaire.oeuvre.datePublicationOeuvre", "dateOeuvre"))));
-        requestTitre.add(Sorts.orderBy(Sorts.descending("Commentaire.datePublicationComm"), Sorts.ascending("titre")));
+        requestTitre.add(sort(Sorts.orderBy(Sorts.descending("Commentaire.datePublicationComm"), Sorts.ascending("titre"))));
         requestTitre.add(limit(10));
-        collection.aggregate(requestTitre)
-                .forEach(doc ->  System.out.println(doc.toJson()));
+        collection.aggregate(requestTitre).forEach(doc ->  oeuvres.add(new Oeuvre(doc.get("titre").toString(), (ArrayList<String>) doc.get("auteurs"), doc.get("nbPages").toString(), doc.get("datePublication").toString(), doc.get("thematique").toString(), doc.get("universites").toString(), doc.get("formations").toString(), doc.get("contenu").toString(), doc.get("noteMoyenne"))));
+        afficherOeuvres(collection, oeuvres);
     }
 
     public static void afficherOeuvres(MongoCollection<Document> collection, ArrayList<Oeuvre> oeuvres){
