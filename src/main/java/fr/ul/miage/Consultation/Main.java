@@ -98,36 +98,39 @@ public class Main {
     }
 
     public static void rechercheTitre(MongoCollection<Document> collection) {
+        ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Recherche par titre");
         System.out.println("Entrez le titre de l'oeuvre recherché");
         String titre = recupSaisie();
         ArrayList<Bson> requestTitre = new ArrayList<>();
         requestTitre = restrictionAcces(requestTitre);
         requestTitre.add(match(eq("titre", titre)));
-        collection.aggregate(requestTitre)
-                .forEach(doc ->  System.out.println(doc.toJson()));
+        collection.aggregate(requestTitre).forEach(doc ->  oeuvres.add(new Oeuvre(doc.get("titre").toString(), (ArrayList<String>) doc.get("auteurs"), doc.get("nbPages").toString(), doc.get("datePublication").toString(), doc.get("thematique").toString(), doc.get("universites").toString(), doc.get("formations").toString(), doc.get("contenu").toString(), doc.get("noteMoyenne"))));
+        afficherOeuvres(collection, oeuvres);
     }
 
     public static void rechercheMotsCles(MongoCollection<Document> collection) {
+        ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Recherche par mots clès");
         System.out.println("Entrez les mots clès recherchés");
         String motsCles = recupSaisie();
         ArrayList<Bson> requestTitre = new ArrayList<>();
         requestTitre.add(match(text(motsCles)));
         requestTitre = restrictionAcces(requestTitre);
-        collection.aggregate(requestTitre)
-                .forEach(doc ->  System.out.println(doc.toJson()));
+        collection.aggregate(requestTitre).forEach(doc ->  oeuvres.add(new Oeuvre(doc.get("titre").toString(), (ArrayList<String>) doc.get("auteurs"), doc.get("nbPages").toString(), doc.get("datePublication").toString(), doc.get("thematique").toString(), doc.get("universites").toString(), doc.get("formations").toString(), doc.get("contenu").toString(), doc.get("noteMoyenne"))));
+        afficherOeuvres(collection, oeuvres);
     }
 
     public static void rechercheThematique(MongoCollection<Document> collection) {
+        ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Recherche par thématique");
         System.out.println("Entrez la thématique recherchée");
         String thematique = recupSaisie();
         ArrayList<Bson> requestTitre = new ArrayList<>();
         requestTitre = restrictionAcces(requestTitre);
         requestTitre.add(match(eq("thematique", thematique)));
-        collection.aggregate(requestTitre)
-                .forEach(doc ->  System.out.println(doc.toJson()));
+        collection.aggregate(requestTitre).forEach(doc ->  oeuvres.add(new Oeuvre(doc.get("titre").toString(), (ArrayList<String>) doc.get("auteurs"), doc.get("nbPages").toString(), doc.get("datePublication").toString(), doc.get("thematique").toString(), doc.get("universites").toString(), doc.get("formations").toString(), doc.get("contenu").toString(), doc.get("noteMoyenne"))));
+        afficherOeuvres(collection, oeuvres);
     }
 
     public static void listeMieuxNotees(MongoCollection<Document> collection) {
@@ -152,6 +155,19 @@ public class Main {
                 .forEach(doc ->  System.out.println(doc.toJson()));
     }
 
+    public static void afficherOeuvres(MongoCollection<Document> collection, ArrayList<Oeuvre> oeuvres){
+        String n = System.getProperty("line.separator");
+        Integer i = 1;
+        for(Oeuvre o : oeuvres){
+            System.out.println("Oeuvre numéro " + i + " :" + n + o.toStringRecap() + n + n);
+            i++;
+        }
+        System.out.println("Quelle oeuvre souhaitez vous voir ? (Entrez son numéro)");
+        Scanner scan = new Scanner(System.in);
+        Integer rep = scan.nextInt();
+        afficherOeuvre(collection, oeuvres.get(rep - 1), oeuvres.get(rep - 1).titre, oeuvres.get(rep - 1).datePublication);
+    }
+
     public static void afficherOeuvre(MongoCollection<Document>collectionOeuvre, Oeuvre oeuvre, String titre, String datePublication){
         MongoClient mongoClient = MongoClients.create();
         MongoDatabase database = mongoClient.getDatabase("projet");
@@ -161,8 +177,17 @@ public class Main {
         FindIterable<Document> docs = collectionCommentaire.find(and(eq("oeuvre.titre", titre), eq("oeuvre.datePublicationOeuvre", datePublication)));
         docs.forEach(doc -> commentaires.add(new Commentaire(doc.get("auteur").toString(), doc.get("contenu").toString(), doc.get("note").toString())));
         //affichage données de l'oeuvre
-
+        System.out.println(oeuvre);
         //affichage commentaires liés à l'oeuvre
+        if (commentaires.size() == 0){
+            System.out.println("Il n'y a aucun commentaire pour cette oeuvre.");
+        }
+        else{
+            System.out.println("Voici les commentaires liés à l'oeuvre : ");
+            for(Commentaire c : commentaires){
+                System.out.println(c);
+            }
+        }
 
         System.out.println("Souhaitez vous déponsez un commentaire et une note ? (Oui ou Non)");
         Scanner scan = new Scanner(System.in);
@@ -173,10 +198,10 @@ public class Main {
     }
 
     public static void ecrireCommentaire (MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionCommentaire, String titre, String datePublicationOeuvre){
-        System.out.println("Ecrivez votre commentaire : (sur une seule ligne");
+        System.out.println("Ecrivez votre commentaire : (sur une seule ligne)");
         Scanner scan = new Scanner(System.in);
         String commentaire = scan.nextLine();
-        System.out.println("Ecrivez votre note : (un nombre entier)");
+        System.out.println("Ecrivez votre note : (un nombre entier entre 0 et 10)");
         Integer note = scan.nextInt();
         addCommentaire(collectionOeuvre, collectionCommentaire, commentaire, titre, datePublicationOeuvre, note);
     }
@@ -194,6 +219,7 @@ public class Main {
         doc.put("datePublicationOeuvre", formatter.format(datePublicationO));
         Document d = new Document();
         d.put("auteur", log);
+        d.put("datePublicationComm", formatter.format(new Date()));
         d.put("oeuvre", doc);
         d.put("contenu", commentaire);
         d.put("note", note);
@@ -210,7 +236,7 @@ public class Main {
                 )
         ).first();
         Document d = new Document();
-        d.put("NoteMoyenne", moyenne.get("noteMoyenne"));
+        d.put("noteMoyenne", moyenne.get("noteMoyenne"));
         collectionOeuvre.updateOne(and(eq("titre", titre), eq("datePublication", datePublicationOeuvre)), new Document("$set", d));
     }
 
