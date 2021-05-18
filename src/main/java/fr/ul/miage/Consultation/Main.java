@@ -18,8 +18,15 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Scanner;
 
-import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.in;
+import static com.mongodb.client.model.Aggregates.lookup;
+import static com.mongodb.client.model.Aggregates.match;
+import static com.mongodb.client.model.Aggregates.unwind;
+import static com.mongodb.client.model.Aggregates.project;
+
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.text;
 
 public class Main {
     public static String log;
@@ -99,60 +106,36 @@ public class Main {
     }
 
     public static void rechercheTitre(MongoCollection<Document> collection) {
-
         System.out.println("\n  Recherche par titre");
-        collection.aggregate(Arrays.asList(
-                Aggregates.lookup("utilisateur", "universites", "universite", "Utilisateur"),
-                Aggregates.unwind("$Utilisateur"),
-                Aggregates.match(eq("Utilisateur.login", log)),
-                Aggregates.match(Filters.expr(" { $eq: [ \"$formations\" , \"$Utilisateur.formations.formation\"] } ")),
-                Aggregates.match(Filters.expr("[\"$roles\", \"$Utilisateur.role\"]")),
-                Aggregates.project(Projections.exclude("Utilisateur", "_id"))
-        )).forEach(doc -> System.out.println(doc.toJson()));
-
-
-
-        /*ArrayList<Bson> requestTitre = new ArrayList<>();
-        requestTitre.add(Aggregates.lookup("utilisateur", "universites", "universite", "Utilisateur"));
-        requestTitre.add(Aggregates.unwind("$Utilisateur"));
-        requestTitre.add(Aggregates.match(Filters.eq("Utilisateur.login", log)));
-        requestTitre.add(Aggregates.match(Filters.expr(" { $eq: [ \"$formations\" , \"$Utilisateur.formations.formation\"] } ")));
-        requestTitre.add(Aggregates.match(Filters.expr(" [ \"$roles\" , \"$Utilisateur.role\"] ")));
-        requestTitre.add(Aggregates.project(Projections.exclude("Utilisateur", "_id")));*/
-
-        /*requestTitre.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
-        requestTitre.add(Aggregates.limit(5));*/
-
-
-
-        /*collection.aggregate(requestTitre)
-                .forEach(doc ->  System.out.println(doc.toJson()));*/
-
-
+        System.out.println("Entrez le titre de l'oeuvre recherché");
+        String titre = recupSaisie();
+        ArrayList<Bson> requestTitre = new ArrayList<>();
+        requestTitre = restrictionAcces(requestTitre);
+        requestTitre.add(match(eq("titre", titre)));
+        collection.aggregate(requestTitre)
+                .forEach(doc ->  System.out.println(doc.toJson()));
     }
 
     public static void rechercheMotsCles(MongoCollection<Document> collection) {
-        //PAS ENCORE FAIT !!!!!
         System.out.println("\n  Recherche par mots clès");
-        ArrayList<Bson> request1 = new ArrayList<>();
-        request1.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
-        request1.add(Aggregates.limit(5));
-        collection.aggregate(request1)
+        System.out.println("Entrez les mots clès recherchés");
+        String motsCles = recupSaisie();
+        ArrayList<Bson> requestTitre = new ArrayList<>();
+        requestTitre.add(match(text(motsCles)));
+        requestTitre = restrictionAcces(requestTitre);
+        collection.aggregate(requestTitre)
                 .forEach(doc ->  System.out.println(doc.toJson()));
-
-
     }
 
     public static void rechercheThematique(MongoCollection<Document> collection) {
-        //PAS ENCORE FAIT !!!!!
         System.out.println("\n  Recherche par thématique");
-        ArrayList<Bson> request1 = new ArrayList<>();
-        request1.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
-        request1.add(Aggregates.limit(5));
-        collection.aggregate(request1)
+        System.out.println("Entrez la thématique recherchée");
+        String thematique = recupSaisie();
+        ArrayList<Bson> requestTitre = new ArrayList<>();
+        requestTitre = restrictionAcces(requestTitre);
+        requestTitre.add(match(eq("thematique", thematique)));
+        collection.aggregate(requestTitre)
                 .forEach(doc ->  System.out.println(doc.toJson()));
-
-
     }
 
     public static void listeMieuxNotees(MongoCollection<Document> collection) {
@@ -215,7 +198,19 @@ public class Main {
         collectionOeuvre.updateOne(and(eq("titre", titre), eq("datePublication", datePublicationOeuvre)), new Document("$set", d));
     }
 
-    public static void essai (){
+    public static ArrayList<Bson> restrictionAcces (ArrayList<Bson> liste){
+        //restriction d'accès en fonction de l'université de la formation et du rôle
+        liste.add(lookup("utilisateur", "universites", "universite", "Utilisateur"));
+        liste.add(unwind("$Utilisateur"));
+        liste.add(match(eq("Utilisateur.login", log)));
+        liste.add(match(in("$expr", Arrays.asList("$Utilisateur.formation", "$formations"))));
+        liste.add(match(in("$expr", Arrays.asList("$Utilisateur.role", "$roles"))));
+        liste.add(project(Projections.exclude("Utilisateur", "_id")));
+        return liste;
+    }
 
+    public static String recupSaisie(){
+        Scanner sc = new Scanner(System.in);
+        return sc.nextLine();
     }
 }
