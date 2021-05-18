@@ -1,10 +1,7 @@
 package fr.ul.miage.Consultation;
 
 import com.mongodb.client.*;
-import com.mongodb.client.model.Accumulators;
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Projections;
+import com.mongodb.client.model.*;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
@@ -16,12 +13,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Scanner;
 
+import static com.mongodb.client.model.Aggregates.*;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.in;
-import static com.mongodb.client.model.Aggregates.lookup;
-import static com.mongodb.client.model.Aggregates.match;
-import static com.mongodb.client.model.Aggregates.unwind;
-import static com.mongodb.client.model.Aggregates.project;
 
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.text;
@@ -137,27 +131,25 @@ public class Main {
     }
 
     public static void listeMieuxNotees(MongoCollection<Document> collection) {
-        //PAS ENCORE FAIT !!!!!
         System.out.println("\n  Liste des 10 meilleurs notes");
-        ArrayList<Bson> request1 = new ArrayList<>();
-        request1.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
-        request1.add(Aggregates.limit(5));
-        collection.aggregate(request1)
+        ArrayList<Bson> requestTitre = new ArrayList<>();
+        requestTitre = restrictionAcces(requestTitre);
+        requestTitre.add(Sorts.orderBy(Sorts.descending("noteMoyenne"), Sorts.ascending("titre")));
+        requestTitre.add(limit(10));
+        collection.aggregate(requestTitre)
                 .forEach(doc ->  System.out.println(doc.toJson()));
-
-
     }
 
     public static void listeCommenteeRecemment(MongoCollection<Document> collection) {
-        //PAS ENCORE FAIT !!!!!
         System.out.println("\n  Liste des 10 les plus récemment commentés");
-        ArrayList<Bson> request1 = new ArrayList<>();
-        request1.add(Aggregates.group("$type", Accumulators.sum("count", 1)));
-        request1.add(Aggregates.limit(5));
-        collection.aggregate(request1)
+        ArrayList<Bson> requestTitre = new ArrayList<>();
+        requestTitre = restrictionAcces(requestTitre);
+        requestTitre.add(lookup("commentaire", "titre", "oeuvre.titre", "Commentaire"));
+        requestTitre.add(match(eq("$expr", Arrays.asList("$Commentaire.oeuvre.datePublicationOeuvre", "dateOeuvre"))));
+        requestTitre.add(Sorts.orderBy(Sorts.descending("Commentaire.datePublicationComm"), Sorts.ascending("titre")));
+        requestTitre.add(limit(10));
+        collection.aggregate(requestTitre)
                 .forEach(doc ->  System.out.println(doc.toJson()));
-
-
     }
 
     public static void afficherOeuvre(MongoCollection<Document>collectionOeuvre, Oeuvre oeuvre, String titre, String datePublication){
