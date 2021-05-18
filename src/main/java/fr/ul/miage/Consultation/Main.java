@@ -219,6 +219,7 @@ public class Main {
         doc.put("datePublicationOeuvre", formatter.format(datePublicationO));
         Document d = new Document();
         d.put("auteur", log);
+        d.put("datePublicationComm", formatter.format(new Date()));
         d.put("oeuvre", doc);
         d.put("contenu", commentaire);
         d.put("note", note);
