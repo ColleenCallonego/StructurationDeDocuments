@@ -13,10 +13,7 @@ import java.lang.reflect.Array;
 import java.text.Normalizer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Scanner;
-import java.util.TreeSet;
+import java.util.*;
 
 import static com.mongodb.client.model.Filters.*;
 
@@ -32,11 +29,18 @@ public class Main {
         MongoCollection<Document> collectionFormation = database.getCollection("formation");
         MongoCollection<Document> collectionUtilisateur = database.getCollection("utilisateur");
         MongoCollection<Document> collectionPlace = database.getCollection("place");
-        getDocumentsToUpsert(collectionOeuvre, collectionFormation, collectionPlace, collectionUtilisateur);
+        getDocumentsToInsert(collectionOeuvre, collectionFormation, collectionPlace, collectionUtilisateur);
         collectionOeuvre.createIndex(Indexes.text("contenu"));
     }
 
-    public static ArrayList<Document> getDocumentsToUpsert (MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionFormation, MongoCollection<Document> collectionPlace, MongoCollection<Document> collectionUtilisateur){
+    /**
+     * Insert les nouvelles oeuvres dans la base de données
+     * @param collectionOeuvre collection qui contient toutes les nouvelles oeuvres a ajouter à la base
+     * @param collectionFormation collection qui contient toutes les nouvelles formations a ajouter à la base
+     * @param collectionPlace collection qui contient toutes les nouvelles places a ajouter à la base
+     * @param collectionUtilisateur collection qui contient toutes les nouveaux utilisateurs a ajouter à la base
+     */
+    public static void getDocumentsToInsert (MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionFormation, MongoCollection<Document> collectionPlace, MongoCollection<Document> collectionUtilisateur){
         ArrayList<Document> list = new ArrayList<Document>();
         try {
             File folder = new File("src/main/resources/import");
@@ -55,9 +59,16 @@ public class Main {
         catch(FileNotFoundException e){
             e.printStackTrace();
         }
-        return list;
     }
 
+    /**
+     * Créer une nouvelle oeuvre
+     * @param collectionOeuvre collection qui contient toutes les nouvelles oeuvres a ajouter à la base
+     * @param collectionFormation collection qui contient toutes les nouvelles formations a ajouter à la base
+     * @param collectionPlace collection qui contient toutes les nouvelles places a ajouter à la base
+     * @param collectionUtilisateur collection qui contient toutes les nouveaux utilisateurs a ajouter à la base
+     * @param scanner scanner qui permet de lire le contenu des fichier à importer
+     */
     public static void createOeuvre(MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionFormation, MongoCollection<Document> collectionPlace, MongoCollection<Document> collectionUtilisateur, Scanner scanner){
         Document d = new Document();
         String titre = "";
@@ -130,11 +141,23 @@ public class Main {
         }
     }
 
+    /**
+     * Vérifie si le fichier contient une oeuvre déjà présente dans la base de données
+     * @param collection collection qui contient les différentes oeuvres présente dans le dossier d'importation
+     * @param titre titre de l'oeuvre analysée
+     * @param date date de publication de l'oeuvre analysée
+     * @return True si l'oeuvre n'est pas présente, False sinon
+     */
     public static Boolean notExistOeuvre(MongoCollection<Document> collection, String titre, String date){
         Long present = collection.countDocuments(and(eq("titre", titre), eq("datePublication", date)));
         return (present == 0);
     }
 
+    /**
+     * Transforme un String en TreeSet<String>
+     * @param s le string à transformer
+     * @return le TreeSet obtenu
+     */
     public static TreeSet<String> transformString (String s){
         TreeSet<String> list = new TreeSet<String>();
         String temp = s;
@@ -150,6 +173,11 @@ public class Main {
         return list;
     }
 
+    /**
+     * Transforme un string en ArrayList<Auteur>
+     * @param s le string à transformer contient toutes les infos des auteurs
+     * @return la liste d'auteur
+     */
     public static ArrayList<Auteur> transformStringAuteurs(String s){
         ArrayList<Auteur> list = new ArrayList<Auteur>();
         String temp = s;
@@ -168,16 +196,28 @@ public class Main {
         return list;
     }
 
-    //AJOUTER ALEATOIRE SUR NIVEAU DE FORMATION
+    /**
+     * Créer une nouvelle formation
+     * @param collectionFormation collection qui contient toutes les nouvelles formations a ajouter à la base
+     * @param collectionPlace collection qui contient toutes les nouvelles places a ajouter à la base
+     * @param universites liste des universités qui posède cette formation
+     * @param formations liste des noms de formations
+     */
     public static void createFormation (MongoCollection<Document> collectionFormation, MongoCollection<Document> collectionPlace, TreeSet<String> universites, TreeSet<String> formations){
         for (String formation : formations) {
             listFormations.add(formation);
             listUniversites.addAll(universites);
+            ArrayList<String> niveaux = new ArrayList<>();
+            niveaux.add("BAC +2");
+            niveaux.add("BAC +3");
+            niveaux.add("BAC +5");
+            Random rand = new Random();
+            String niveau = niveaux.get(rand.nextInt(niveaux.size())); //choisi alléatoirement un élément de la liste niveaux
             TreeSet<String> l = notExistFormation(collectionFormation, formation);
-            if (l.isEmpty()){
+            if (l.isEmpty()){//si il n'y a aucune université qui propose cette formation alors on la créer
                 Document d = new Document();
                 d.put("nom", formation);
-                d.put("niveau", " ");
+                d.put("niveau", niveau);
                 d.put("universites", universites);
                 collectionFormation.insertOne(d);
             }
@@ -193,6 +233,12 @@ public class Main {
         }
     }
 
+    /**
+     * Vérifie si le fichier contient une formation déjà présente dans la base de données
+     * @param collection collection qui contient les différentes formation présente dans les fichiers du dossier d'importation
+     * @param nom nom de la formation
+     * @return une liste des universités qui propose cette formation
+     */
     public static TreeSet<String> notExistFormation (MongoCollection<Document> collection, String nom){
         TreeSet<String> list = new TreeSet<String>();
         Long present = collection.countDocuments(eq("nom", nom));
@@ -204,11 +250,28 @@ public class Main {
         return list;
     }
 
+    /**
+     * Construit le login d'un auteur
+     * @param collection collection qui contient toutes les nouveaux utilisateurs a ajouter à la base
+     * @param nom nom de l'auteur
+     * @param prenom prénom de l'auteur
+     * @return le login d'un auteur
+     */
     public static String getLoginAuteur (MongoCollection<Document> collection, String nom, String prenom){
         Document d = collection.find(eq("nom", nom)).first();
         return (String)d.get("login");
     }
 
+    /**
+     * Créer un nouvel auteur
+     * @param collection collection qui contient toutes les nouveaux utilisateurs a ajouter à la base
+     * @param nom nom du nouvel auteur
+     * @param prenom prénom du nouvel auteur
+     * @param roles rôles du nouvel auteur
+     * @param universites universités du nouvel auteur
+     * @param formations formations du nouvel auteur
+     * @param datePubli date de publication de l'oeuvre du nouvel auteur (pour mettre à jour les dates de début et de fin de formation)
+     */
     public static void createAuteur (MongoCollection<Document> collection, String nom, String prenom, TreeSet<String> roles, TreeSet<String> universites, TreeSet<String> formations, String datePubli){
         Document d = new Document();
         if (notExistAuteur(collection, nom, prenom)){
@@ -297,11 +360,25 @@ public class Main {
         }
     }
 
+    /**
+     * Vérifie si u auteur existe déjà dans la base de données
+     * @param collection collection qui contient toutes les nouveaux auteurs a ajouter à la base
+     * @param nom nom de l'auteur
+     * @param prenom prénom de l'auteur
+     * @return True si l'auteur n'existe pas encore, False sinon
+     */
     public static Boolean notExistAuteur (MongoCollection<Document> collection, String nom, String prenom){
         Long present = collection.countDocuments(and(eq("nom", nom), eq("prenom", prenom)));
         return (present == 0);
     }
 
+    /**
+     * Récupère les information liées à l'auteur
+     * @param collection collection qui contient toutes les nouveaux utilisateurs a ajouter à la base
+     * @param nom nom de l'auteur
+     * @param prenom prénom de l'auteur
+     * @return un Auteur
+     */
     public static Auteur getInfoAuteur (MongoCollection<Document> collection, String nom, String prenom){
         Auteur a;
         ArrayList<Formation> listFormations = new ArrayList<Formation>();
@@ -322,15 +399,32 @@ public class Main {
         return a;
     }
 
+    /**
+     * Gère les login doublons
+     * @param collection collection qui contient toutes les nouveaux utilisateurs a ajouter à la base
+     * @param nom nom de l'utilisateur
+     * @param prenom prénom de l'utilisateur
+     * @return le nombre d'occurrence du login dans la base de données
+     */
     public static Long sameLogin (MongoCollection<Document> collection, String nom, String prenom){
         return collection.countDocuments(regex("login", (nom + (prenom.charAt(0)))));
     }
 
+    /**
+     * Créer le nombre de place d'une formation
+     * @param collection collection qui contient toutes les nouvelles places a ajouter à la base
+     * @param universite nom de l'université
+     * @param formation nom de la formation
+     */
     public static void createPlace(MongoCollection<Document> collection, String universite, String formation){
+        Random rand = new Random();
+        int min = 50;
+        int max = 500;
+        String nbPlaceAnnee = String.valueOf(rand.nextInt(max-min)+min); //choisi un nombre de place aléatoire entre min et max et transforme le int en Strinng
         Document d = new Document();
         d.put("universite", universite);
         d.put("formation", formation);
-        d.put("nbPlaceAnnee", "100");
+        d.put("nbPlaceAnnee", nbPlaceAnnee);
         collection.insertOne(d);
     }
 }

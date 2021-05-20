@@ -39,6 +39,11 @@ public class Main {
         ecranPrincipal();
     }
 
+    /**
+     * Vérifie le login entré pour ce connecter au programme
+     * @param login login d'un utilisateur
+     * @return True si le login est bon (présent dans la base), False sinon
+     */
     public static Boolean connect(String login){
         MongoClient mongoClient = MongoClients.create();
         MongoDatabase database = mongoClient.getDatabase("projet");
@@ -47,6 +52,10 @@ public class Main {
         return (present != 0);
     }
 
+    /**
+     * Créer la connection avec la collection oeuvre de la base de données
+     * @return la collection oeuvre
+     */
     public static MongoCollection<Document> getCollectionOeuvre(){
         // Creation de la connexion au serveur MongoDB
         MongoClient mongoClient = MongoClients.create();
@@ -57,6 +66,9 @@ public class Main {
         return collection;
     }
 
+    /**
+     * Affiche le menu et gère la réponse fournise par celui-ci
+     */
     public static void ecranPrincipal(){
         MongoCollection<Document> collectionOeuvre = getCollectionOeuvre();
         Integer rep = menu();
@@ -82,6 +94,10 @@ public class Main {
         }
     }
 
+    /**
+     * Affichage du menu de choix de recherche
+     * @return la réponse du choix de recherche
+     */
     public static Integer menu(){
         String n = System.getProperty("line.separator");
         Scanner scan = new Scanner(System.in);
@@ -97,6 +113,10 @@ public class Main {
         return choix;
     }
 
+    /**
+     * Requête de recherche des oeuvres par titre
+     * @param collection  collection oeuvre
+     */
     public static void rechercheTitre(MongoCollection<Document> collection) {
         ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Recherche par titre");
@@ -109,6 +129,10 @@ public class Main {
         afficherOeuvres(collection, oeuvres);
     }
 
+    /**
+     * Requête de recherche des oeuvres par mots clès
+     * @param collection  collection oeuvre
+     */
     public static void rechercheMotsCles(MongoCollection<Document> collection) {
         ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Recherche par mots clès");
@@ -121,6 +145,10 @@ public class Main {
         afficherOeuvres(collection, oeuvres);
     }
 
+    /**
+     * Requête de recherche des oeuvres par thématique
+     * @param collection  collection oeuvre
+     */
     public static void rechercheThematique(MongoCollection<Document> collection) {
         ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Recherche par thématique");
@@ -133,6 +161,10 @@ public class Main {
         afficherOeuvres(collection, oeuvres);
     }
 
+    /**
+     * Requête de recherche des 10 oeuvres les mieux notées
+     * @param collection  collection oeuvre
+     */
     public static void listeMieuxNotees(MongoCollection<Document> collection) {
         ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Liste des 10 meilleurs notes");
@@ -144,6 +176,10 @@ public class Main {
         afficherOeuvres(collection, oeuvres);
     }
 
+    /**
+     * Requête de recherche des 10 oeuvres les plus récemment commentées
+     * @param collection collection oeuvre
+     */
     public static void listeCommenteeRecemment(MongoCollection<Document> collection) {
         ArrayList<Oeuvre> oeuvres = new ArrayList<Oeuvre>();
         System.out.println("\n  Liste des 10 les plus récemment commentés");
@@ -157,6 +193,11 @@ public class Main {
         afficherOeuvres(collection, oeuvres);
     }
 
+    /**
+     * Permet d'afficher la liste des oeuvres retournées par la requête de recherhe
+     * @param collection collection d'oeuvres de la base de données
+     * @param oeuvres oeuvres retourner par la requête
+     */
     public static void afficherOeuvres(MongoCollection<Document> collection, ArrayList<Oeuvre> oeuvres){
         String n = System.getProperty("line.separator");
         Integer i = 1;
@@ -170,6 +211,13 @@ public class Main {
         afficherOeuvre(collection, oeuvres.get(rep - 1), oeuvres.get(rep - 1).titre, oeuvres.get(rep - 1).datePublication);
     }
 
+    /**
+     * Permet d'afficher les information et le contenu d'une oeuvre sélectionnée
+     * @param collectionOeuvre collection des oeuvres de la base de données
+     * @param oeuvre oeuvre sélectionnée
+     * @param titre titre de l'oeuvre
+     * @param datePublication date de publication de l'oeuvre
+     */
     public static void afficherOeuvre(MongoCollection<Document>collectionOeuvre, Oeuvre oeuvre, String titre, String datePublication){
         MongoClient mongoClient = MongoClients.create();
         MongoDatabase database = mongoClient.getDatabase("projet");
@@ -199,6 +247,13 @@ public class Main {
         }
     }
 
+    /**
+     * Demande les infos nécessaires pour la création d'un commentaire
+     * @param collectionOeuvre collection des oeuvres de la base de données
+     * @param collectionCommentaire collection des commentaires de la base de données
+     * @param titre titre de l'oeuvre commentée
+     * @param datePublicationOeuvre date de publication de l'oeuvre
+     */
     public static void ecrireCommentaire (MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionCommentaire, String titre, String datePublicationOeuvre){
         System.out.println("Ecrivez votre commentaire : (sur une seule ligne)");
         Scanner scan = new Scanner(System.in);
@@ -208,6 +263,15 @@ public class Main {
         addCommentaire(collectionOeuvre, collectionCommentaire, commentaire, titre, datePublicationOeuvre, note);
     }
 
+    /**
+     * Ajoute un commentaire à une oeuvre
+     * @param collectionOeuvre collection des oeuvres de la base de données
+     * @param collectionCommentaire collection des commentaires de la base de données
+     * @param commentaire contenu du commentaire
+     * @param titre titre de l'oeuvre commentée
+     * @param datePublicationOeuvre date de publication de l'oeuvre
+     * @param note note donnée à l'oeuvre
+     */
     public static void addCommentaire (MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionCommentaire, String commentaire, String titre, String datePublicationOeuvre, Integer note){
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         Date datePublicationO = new Date();
@@ -229,6 +293,13 @@ public class Main {
         updateNoteMoyenneOeuvre(collectionOeuvre,collectionCommentaire, titre, datePublicationOeuvre);
     }
 
+    /**
+     * Permet de mettre à jour la note moyenne d'un oeuvre à partir de ses commentaires
+     * @param collectionOeuvre collection des oeuvres de la base de données
+     * @param collectionCommentaire collection des commentaires de la base de données
+     * @param titre titre de l'oeuvre
+     * @param datePublicationOeuvre date de publication de l'oeuvre
+     */
     public static void updateNoteMoyenneOeuvre(MongoCollection<Document> collectionOeuvre, MongoCollection<Document> collectionCommentaire, String titre, String datePublicationOeuvre){
         Document moyenne = collectionCommentaire.aggregate(
                 Arrays.asList(
@@ -242,6 +313,11 @@ public class Main {
         collectionOeuvre.updateOne(and(eq("titre", titre), eq("datePublication", datePublicationOeuvre)), new Document("$set", d));
     }
 
+    /**
+     * Partie de la requête qui gère les restrictions d'accès liée à l'université, la formation et le rôle
+     * @param liste liste qui contient les différente étapes de la requête vers la base de données
+     * @return la liste
+     */
     public static ArrayList<Bson> restrictionAcces (ArrayList<Bson> liste){
         //restriction d'accès en fonction de l'université de la formation et du rôle
         liste.add(lookup("utilisateur", "universites", "universite", "Utilisateur"));
@@ -253,6 +329,10 @@ public class Main {
         return liste;
     }
 
+    /**
+     * Permet de saisir du test
+     * @return la saisie utilisateur
+     */
     public static String recupSaisie(){
         Scanner sc = new Scanner(System.in);
         return sc.nextLine();
